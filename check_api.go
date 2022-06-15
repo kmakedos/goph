@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -13,7 +15,7 @@ type APIResponse struct {
 }
 
 func (a APIResponse) Get(url string) (string, error) {
-	resp, err := http.Get("http://" + url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +35,8 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	url := flag.String("url", "http://localhost:8000/api", "A url to ask")
+	url := flag.String("u", "http://localhost:8080/api", "A url to ask")
+	port := flag.String("p", "8000", "Port of this server to listen to")
 	flag.Parse()
 	api := APIResponse{}
 	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
@@ -51,5 +54,18 @@ func main() {
 	})
 	http.HandleFunc("/health", health)
 	log.Println("Starting server and listening to port 8000...")
-	http.ListenAndServe(":8000", nil)
+	l, err := net.Listen("tcp", ":"+*port)
+	if err != nil {
+		log.Fatalln("Could not listen: ", err)
+	}
+	srv := http.Server{}
+	as := sync.WaitGroup{}
+	go func() {
+		if err := srv.Serve(l); err != nil {
+			log.Fatalln("Could not start server: ", err)
+		}
+		as.Done()
+	}()
+	as.Add(1)
+	as.Wait()
 }
