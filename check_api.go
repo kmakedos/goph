@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -35,13 +36,18 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	url := flag.String("u", "http://localhost:8080/api", "A url to ask")
+	url, ok := os.LookupEnv("API_URL")
+	if !ok {
+		log.Println("INFO: API_URL is not set")
+		url = "http://localhost:8080"
+	}
+	log.Println("INFO: API URL is: ", url)
 	port := flag.String("p", "8000", "Port of this server to listen to")
 	flag.Parse()
 	api := APIResponse{}
 	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 		begin := time.Now()
-		thread, err := api.Get(*url)
+		thread, err := api.Get(url)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
